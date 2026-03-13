@@ -1,1 +1,24 @@
-wrkdir*
+# Build Artifacts
+wrkdir/
+bin/
+obj/
+
+# Generated Binaries and Images
+*.o
+*.a
+*.d
+*.bin
+*.elf
+*.dat
+*.dtb
+*.img
+
+# Platform Specifics
+overlays/
+uboot.env
+*.log
+
+# IDE and System Files
+.DS_Store
+.vscode/
+.idea/
