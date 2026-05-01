@@ -43,7 +43,11 @@ data/*.csv
 data/csv_final/
 
 # Local toolchain
-etc/
+/etc/
+
+# VM3 Buildroot overlay (must not be ignored by **/*.d or /etc/ rules)
+!bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/etc/
+!bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/etc/**
 
 # Misc
 *.swp

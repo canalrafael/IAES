@@ -1,0 +1,210 @@
+#!/bin/sh
+# /etc/init.d/S99ataques
+#
+# Attack scenarios:
+#   - Scenario 6: Continuous cycle Spectre → Armageddon → Meltdown → repeat
+#   - Scenario 7: Cycle with random benchmarks between attacks:
+#                 benchmark → Spectre → benchmark → Armageddon → benchmark → Meltdown → repeat
+#   - Scenario 8: Persistent Meltdown (infinite loop) — no benchmarks, no other attacks
+#   - Scenario 9: Cycle with random benchmarks (like scenario 7) but with ZombieLoad:
+#                 benchmark → Spectre → benchmark → ZombieLoad → benchmark → Armageddon → repeat
+#
+# The label is passed as argument to ipc_sync and written via ipc_signal.
+# Mode configuration (with or without benchmarks) is done via /root/attack_mode.cfg
+
+# Settings
+LOGFILE="/tmp/ataques.log"
+ATTACK_DURATION=600   # 10 minutos (600s)
+SYNC_INTERVAL=15      # 15s
+
+# Unique labels per attack (to differentiate in CSV)
+# Benchmarks use 1-7, attacks start at 10
+L_BENCH=0
+L_SPECTRE=10
+L_ARMAGEDDON=11
+L_MELTDOWN=12
+L_ZOMBIELOAD=13
+
+# Available benchmarks for non-attack phases
+BENCHMARKS="bandwidth dijkstra disparity fft qsort sha sorting"
+NUM_BENCHMARKS=7
+
+# PID file
+PIDFILE="/var/run/ataques.pid"
+
+# Mode configuration file (created by the build according to the scenario)
+MODE_FILE="/root/attack_mode.cfg"
+
+# Map benchmark name to numeric ID
+# (same IDs as VM1/VM2 in globals.h)
+bench_name_to_id() {
+    case $1 in
+        bandwidth)  echo 1 ;;
+        disparity)  echo 2 ;;
+        fft)        echo 3 ;;
+        qsort)      echo 4 ;;
+        dijkstra)   echo 5 ;;
+        sha)        echo 6 ;;
+        sorting)    echo 7 ;;
+        *)          echo 0 ;;
+    esac
+}
+
+random_bench() {
+    IDX=$(od -An -N1 -tu1 /dev/urandom | tr -d ' ')
+    IDX=$(( IDX % NUM_BENCHMARKS ))
+    
+    COUNT=0
+    for B in $BENCHMARKS; do
+        if [ $COUNT -eq $IDX ]; then
+            echo "$B"
+            return
+        fi
+        COUNT=$(( COUNT + 1 ))
+    done
+    
+    echo "sha"
+}
+
+run_attacks() {
+    MODE="no_idle"
+    if [ -f $MODE_FILE ]; then
+        MODE=$(cat $MODE_FILE)
+    fi
+
+    echo "[VM3] Starting attack orchestrator (mode=$MODE, spectre=$L_SPECTRE armageddon=$L_ARMAGEDDON meltdown=$L_MELTDOWN zombieload=$L_ZOMBIELOAD)..." | tee $LOGFILE > /dev/console
+
+    while true; do
+    if [ "$MODE" = "meltdown_only" ]; then
+            run_attack_for "/root/meltdown" "Meltdown" $L_MELTDOWN
+        elif [ "$MODE" = "with_bench" ]; then
+            run_bench_for $L_BENCH
+            run_attack_for "/root/spectre" "Spectre" $L_SPECTRE
+
+            run_bench_for $L_BENCH
+            run_attack_for "/root/armageddon" "Armageddon" $L_ARMAGEDDON
+
+            run_bench_for $L_BENCH
+            run_attack_for "/root/meltdown" "Meltdown" $L_MELTDOWN
+        elif [ "$MODE" = "with_bench_zombieload" ]; then
+            run_bench_for $L_BENCH
+            run_attack_for "/root/spectre" "Spectre" $L_SPECTRE
+
+            run_bench_for $L_BENCH
+            run_attack_for "/root/zombieload" "ZombieLoad" $L_ZOMBIELOAD
+
+            run_bench_for $L_BENCH
+            run_attack_for "/root/armageddon" "Armageddon" $L_ARMAGEDDON
+        else
+            run_attack_for "/root/spectre" "Spectre" $L_SPECTRE
+            run_attack_for "/root/armageddon" "Armageddon" $L_ARMAGEDDON
+            run_attack_for "/root/meltdown" "Meltdown" $L_MELTDOWN
+        fi
+    done
+}
+
+run_bench_for() {
+    LABEL=$1
+
+    echo "[VM3] >> BENCHMARK phase (no attack) for $(($ATTACK_DURATION / 60)) minutes (label=$LABEL)..." | tee -a $LOGFILE > /dev/console
+
+    TIME_ELAPSED=0
+
+    CURR_BENCH=$(random_bench)
+    CURR_BENCH_ID=$(bench_name_to_id $CURR_BENCH)
+    echo "[VM3]    > Benchmark: $CURR_BENCH (id=$CURR_BENCH_ID)" | tee -a $LOGFILE > /dev/console
+
+    /root/ipc_signal write 8 $CURR_BENCH_ID
+
+    /root/benchmark $CURR_BENCH &
+    BENCH_PID=$!
+
+    while [ $TIME_ELAPSED -lt $ATTACK_DURATION ]; do
+        sleep $SYNC_INTERVAL
+
+        kill -STOP $BENCH_PID 2>/dev/null
+
+        /root/ipc_sync $CURR_BENCH_ID
+
+        kill -9 $BENCH_PID 2>/dev/null
+        wait $BENCH_PID 2>/dev/null
+
+        CURR_BENCH=$(random_bench)
+        CURR_BENCH_ID=$(bench_name_to_id $CURR_BENCH)
+        echo "[VM3]    > Benchmark: $CURR_BENCH (id=$CURR_BENCH_ID)" | tee -a $LOGFILE > /dev/console
+
+        /root/ipc_signal write 8 $CURR_BENCH_ID
+
+        /root/benchmark $CURR_BENCH &
+        BENCH_PID=$!
+
+        TIME_ELAPSED=$(($TIME_ELAPSED + $SYNC_INTERVAL))
+    done
+
+    kill -9 $BENCH_PID 2>/dev/null
+    wait $BENCH_PID 2>/dev/null
+}
+
+run_attack_for() {
+    BIN_PATH=$1
+    NAME=$2
+    LABEL=$3
+
+    echo "[VM3] >> Running $NAME for $(($ATTACK_DURATION / 60)) minutes (label=$LABEL)..." | tee -a $LOGFILE > /dev/console
+    
+    /root/ipc_signal write 8 $LABEL
+    
+    $BIN_PATH &
+    ATTACK_PID=$!
+
+    TIME_ELAPSED=0
+
+    while [ $TIME_ELAPSED -lt $ATTACK_DURATION ]; do
+        sleep $SYNC_INTERVAL
+        
+        kill -STOP $ATTACK_PID 2>/dev/null
+
+        /root/ipc_sync $LABEL
+
+        kill -CONT $ATTACK_PID 2>/dev/null
+        
+        TIME_ELAPSED=$(($TIME_ELAPSED + $SYNC_INTERVAL))
+    done
+
+    kill -9 $ATTACK_PID 2>/dev/null
+    wait $ATTACK_PID 2>/dev/null
+}
+
+case "$1" in
+  start)
+        echo "Starting ataques script"
+        if [ -f $PIDFILE ]; then
+            echo "Already running."
+            exit 1
+        fi
+        if [ ! -c /dev/mem ]; then
+            echo "WARNING: /dev/mem not found! IPC will fail." | tee -a $LOGFILE > /dev/console
+        fi
+        run_attacks &
+        echo $! > $PIDFILE
+        ;;
+  stop)
+        echo "Stopping ataques script"
+        if [ -f $PIDFILE ]; then
+            PID=$(cat $PIDFILE)
+            kill $PID
+            rm -f $PIDFILE
+            killall spectre armageddon meltdown zombieload benchmark 2>/dev/null
+        else
+            echo "Not running"
+        fi
+        ;;
+  restart|reload)
+        $0 stop
+        $0 start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+exit 0
