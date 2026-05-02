@@ -17,6 +17,9 @@ IAES addresses these by using **Hardware Performance Counters (HPCs)** as securi
 3. **Lightweight AI Detector**: A computationally efficient Multi-Layer Perceptron (MLP) using sliding temporal windows for deterministic anomaly detection.
 4. **Bao-based Architecture**: Integration with the Bao Hypervisor for run-time monitoring on COTS (Commercial Off-The-Shelf) platforms.
 
+## 📝 Scientific Publication
+This repository and the experimental data provided are part of the research submitted to the **31st IEEE International Conference on Emerging Technologies and Factory Automation (ETFA 2026)**.
+
 ## 🛠 Project Structure
 - `/platforms/rpi4`: Configuration files and device trees for the Raspberry Pi 4.
 - `/demos`: Source code for the Mixed-Criticality demos (Linux + FreeRTOS).
