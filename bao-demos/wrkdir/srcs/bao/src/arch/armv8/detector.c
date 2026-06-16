@@ -94,6 +94,14 @@ static float  s_ring[PMU_MAX_CPUS][N_SIGNALS][MDL_WINDOW_SIZE];
 static int    s_idx[PMU_MAX_CPUS];      /* next-write position in ring       */
 static int    s_filled[PMU_MAX_CPUS];   /* 1 once all W slots have been used */
 
+/* ── Early-Exit Neural Network (EENN) Configuration ────────────────────────── */
+static const float MDL_W_EXIT1[MDL_N_H1] = {
+    -0.85f,  0.15f,  0.10f,  0.25f,  0.20f,  0.18f, -0.35f,  0.22f,
+     0.75f,  0.08f,  0.21f, -0.55f, -0.65f,  0.45f, -0.95f, -0.85f
+};
+static const float MDL_B_EXIT1 = -0.05f;
+#define EENN_CONF_THRESHOLD 0.85f
+
 /* ── Public API ─────────────────────────────────────────────────────────────── */
 
 void detector_init(void)
@@ -110,7 +118,11 @@ void detector_init(void)
 
 det_output_t detector_process_sample(cpuid_t cpu_id, const pmu_sample_t *sample)
 {
-    det_output_t result = { DET_WARMUP, 0.0f };
+    det_output_t result = { DET_WARMUP, 0.0f, 0, 0 };
+    uint64_t start_cycles = 0;
+#ifndef DETECTOR_PC_SIM
+    __asm__ volatile("isb \n mrs %0, pmccntr_el0" : "=r"(start_cycles));
+#endif
 
     if (cpu_id < 0 || cpu_id >= PMU_MAX_CPUS)
         return result;
@@ -185,7 +197,7 @@ det_output_t detector_process_sample(cpuid_t cpu_id, const pmu_sample_t *sample)
     for (i = 0; i < MDL_N_FEATURES; i++)
         feat[i] = (feat[i] - MDL_FEAT_MEAN[i]) / (MDL_FEAT_STD[i] + eps);
 
-    /* ── Step 5: MLP forward pass ───────────────────────────────────────────── */
+    /* ── Step 5: MLP forward pass with Early Exit (EENN) ────────────────────── */
     float h1[MDL_N_H1], h2[MDL_N_H2];
     int   r, c;
 
@@ -195,6 +207,32 @@ det_output_t detector_process_sample(cpuid_t cpu_id, const pmu_sample_t *sample)
         for (c = 0; c < MDL_N_FEATURES; c++)
             acc += MDL_W1[r][c] * feat[c];
         h1[r] = BM_RELU(acc);
+    }
+
+    /* Early Exit (Exit 1): logit_exit1 = W_exit1 · h1 + B_exit1 */
+    float logit_exit1 = MDL_B_EXIT1;
+    for (c = 0; c < MDL_N_H1; c++) {
+        logit_exit1 += MDL_W_EXIT1[c] * h1[c];
+    }
+    float p_exit1 = bm_sigmoidf(logit_exit1 / MDL_TEMPERATURE);
+
+    /* Confidence check: confidence = 2.0 * |p_exit1 - 0.5| */
+    float confidence = 2.0f * (p_exit1 >= 0.5f ? (p_exit1 - 0.5f) : (0.5f - p_exit1));
+
+    if (confidence >= EENN_CONF_THRESHOLD) {
+        /* Exit 1 is sufficiently confident — skip remaining layer computations */
+        result.probability = p_exit1;
+        result.status      = (p_exit1 >= MDL_THRESHOLD) ? DET_ATTACK : DET_BENIGN;
+        result.exit_used   = 1;
+
+        uint64_t end_cycles = 0;
+#ifndef DETECTOR_PC_SIM
+        __asm__ volatile("isb \n mrs %0, pmccntr_el0" : "=r"(end_cycles));
+        result.cycles_spent = (uint32_t)(end_cycles - start_cycles);
+#else
+        result.cycles_spent = 110; // Simulated cycles for Exit 1
+#endif
+        return result;
     }
 
     /* Layer 2: h2 = ReLU(W2 · h1 + b2) */
@@ -213,9 +251,18 @@ det_output_t detector_process_sample(cpuid_t cpu_id, const pmu_sample_t *sample)
     /* Temperature-calibrated sigmoid: p = sigmoid(logit / T) */
     float p = bm_sigmoidf(logit / MDL_TEMPERATURE);
 
-    /* ── Step 6: threshold decision ─────────────────────────────────────────── */
+    /* ── Step 6: threshold decision (Exit 2) ────────────────────────────────── */
     result.probability = p;
     result.status      = (p >= MDL_THRESHOLD) ? DET_ATTACK : DET_BENIGN;
+    result.exit_used   = 2;
+
+    uint64_t end_cycles = 0;
+#ifndef DETECTOR_PC_SIM
+    __asm__ volatile("isb \n mrs %0, pmccntr_el0" : "=r"(end_cycles));
+    result.cycles_spent = (uint32_t)(end_cycles - start_cycles);
+#else
+    result.cycles_spent = 240; // Simulated cycles for Exit 2
+#endif
 
     return result;
 }
@@ -266,14 +313,15 @@ int main(int argc, char *argv[])
 
     /* Counters for summary */
     long total = 0, warmup = 0, tp = 0, tn = 0, fp = 0, fn_cnt = 0;
+    long early_exits = 0;
 
-    fprintf(stdout, "%-10s %-12s %-8s %-10s %s\n",
-            "Sample", "Label", "p(atk)", "Status", "Verdict");
+    fprintf(stdout, "%-10s %-12s %-8s %-10s %-15s %s\n",
+            "Sample", "Label", "p(atk)", "Status", "Verdict", "Exit/Cycles");
     fprintf(stdout, "%s\n",
-            "------------------------------------------------------------------");
+            "--------------------------------------------------------------------------------");
     if (log)
-        fprintf(log, "%-10s %-12s %-8s %-10s %s\n",
-                "Sample", "Label", "p(atk)", "Status", "Verdict");
+        fprintf(log, "%-10s %-12s %-8s %-10s %-15s %s\n",
+                "Sample", "Label", "p(atk)", "Status", "Verdict", "Exit/Cycles");
 
     pmu_sample_t s;
     uint64_t label_raw;
@@ -283,7 +331,7 @@ int main(int argc, char *argv[])
         line_no++;
         /* Accept lines with 6 columns after timestamp (label may be absent) */
         int parsed = sscanf(line,
-            "%*[^,],%llu,%llu,%llu,%llu,%llu,%llu",
+            "%*[^,],%*[^,],%llu,%llu,%llu,%llu,%llu,%llu",
             (unsigned long long *)&s.cpu_cycles,
             (unsigned long long *)&s.instructions,
             (unsigned long long *)&s.cache_misses,
@@ -291,11 +339,25 @@ int main(int argc, char *argv[])
             (unsigned long long *)&s.l2_cache_access,
             (unsigned long long *)&label_raw);
 
+        if (parsed < 5) {
+            parsed = sscanf(line,
+                "%*[^,],%llu,%llu,%llu,%llu,%llu,%llu",
+                (unsigned long long *)&s.cpu_cycles,
+                (unsigned long long *)&s.instructions,
+                (unsigned long long *)&s.cache_misses,
+                (unsigned long long *)&s.branch_misses,
+                (unsigned long long *)&s.l2_cache_access,
+                (unsigned long long *)&label_raw);
+        }
+
         if (parsed < 5) break;   /* end of data */
         int true_label = (parsed == 6) ? (int)label_raw : -1;  /* -1 = unknown */
 
         det_output_t out = detector_process_sample(cpu_id, &s);
         total++;
+        if (out.exit_used == 1) {
+            early_exits++;
+        }
 
         const char *status_str, *verdict_str;
 
@@ -324,15 +386,15 @@ int main(int argc, char *argv[])
 
         /* Print every 50th line to avoid flooding */
         if (line_no % 50 == 0 || out.status == DET_ATTACK) {
-            fprintf(stdout, "%-10ld %-12s %-8.4f %-10s %s\n",
+            fprintf(stdout, "%-10ld %-12s %-8.4f %-10s %-15s Exit %d (%u cycles)\n",
                     line_no,
                     (true_label == 2) ? "attack" : (true_label == 0) ? "benign" : "?",
-                    out.probability, status_str, verdict_str);
+                    out.probability, status_str, verdict_str, out.exit_used, out.cycles_spent);
             if (log)
-                fprintf(log, "%-10ld %-12s %-8.4f %-10s %s\n",
+                fprintf(log, "%-10ld %-12s %-8.4f %-10s %-15s Exit %d (%u cycles)\n",
                         line_no,
                         (true_label == 2) ? "attack" : (true_label == 0) ? "benign" : "?",
-                        out.probability, status_str, verdict_str);
+                        out.probability, status_str, verdict_str, out.exit_used, out.cycles_spent);
         }
     }
 
@@ -342,6 +404,7 @@ int main(int argc, char *argv[])
     fprintf(stdout, "  Total samples  : %ld\n", total);
     fprintf(stdout, "  Warmup skipped : %ld  (W = %d)\n", warmup, MDL_WINDOW_SIZE);
     fprintf(stdout, "  Evaluated      : %ld\n", evaluated);
+    fprintf(stdout, "  Early exits    : %ld (%.2f%% of evaluated)\n", early_exits, evaluated > 0 ? (float)early_exits * 100.0f / (float)evaluated : 0.0f);
     if (evaluated > 0) {
         fprintf(stdout, "  TP             : %ld\n", tp);
         fprintf(stdout, "  TN             : %ld\n", tn);

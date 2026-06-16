@@ -46,6 +46,8 @@ typedef enum {
 typedef struct {
     det_result_t status;
     float        probability;  /* Raw model output in [0, 1]                */
+    uint8_t      exit_used;    /* 1 = Early Exit (Exit 1), 2 = Final Exit (Exit 2) */
+    uint32_t     cycles_spent; /* CPU cycles spent during this inference    */
 } det_output_t;
 
 /* ── API ────────────────────────────────────────────────────────────────────── */

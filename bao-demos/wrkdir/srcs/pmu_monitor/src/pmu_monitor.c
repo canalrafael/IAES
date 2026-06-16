@@ -83,7 +83,7 @@ void dump_history_to_serial(void) {
 
     printf("==================================================\n");
     printf("START_OF_CSV_DATA\n");
-    printf("CORE_ID,TIMESTAMP,CPU_CYCLES,INSTRUCTIONS,CACHE_MISSES,BRANCH_MISSES,L2_CACHE_ACCESS,LABEL,DET_STATUS,DET_PROB,BENCH_ID\n");
+    printf("CORE_ID,TIMESTAMP,CPU_CYCLES,INSTRUCTIONS,CACHE_MISSES,BRANCH_MISSES,L2_CACHE_ACCESS,LABEL,DET_STATUS,DET_PROB,BENCH_ID,EXIT_USED,CYCLES_SPENT\n");
 
     for (uint32_t i = 0; i < current_sample_index; i++) {
         // Convert timestamp (ticks) to real time
@@ -102,7 +102,13 @@ void dump_history_to_serial(void) {
         uint32_t mm = (uint32_t)((day_secs % 3600) / 60);
         uint32_t ss = (uint32_t)(day_secs % 60);
 
-        printf("%lu,%02lu:%02lu:%02lu:%03lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n",
+        // Unpack status, exit_used, and cycles_spent from the packed det_status
+        uint64_t raw_det_status = pmu_history[i].data.det_status;
+        uint64_t status = raw_det_status & 0xFF;
+        uint64_t exit_used = (raw_det_status >> 8) & 0xFF;
+        uint64_t cycles_spent = (raw_det_status >> 16) & 0xFFFFFFFF;
+
+        printf("%lu,%02lu:%02lu:%02lu:%03lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n",
             pmu_history[i].core_id,
             (unsigned long)hh, (unsigned long)mm,
             (unsigned long)ss, (unsigned long)ms,
@@ -112,9 +118,11 @@ void dump_history_to_serial(void) {
             pmu_history[i].data.branch_misses,
             pmu_history[i].data.l2_cache_access,
             (unsigned long)pmu_history[i].label,
-            pmu_history[i].data.det_status,
+            (unsigned long)status,
             pmu_history[i].data.det_probability_pct,
-            (unsigned long)pmu_history[i].bench_id);
+            (unsigned long)pmu_history[i].bench_id,
+            (unsigned long)exit_used,
+            (unsigned long)cycles_spent);
     }
 
     printf("END_OF_CSV_DATA\n");

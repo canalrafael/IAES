@@ -25,9 +25,11 @@ import glob
 # Formatos suportados (mantém CORE_ID na saída)
 COLUMNS_OLD = ["CORE_ID", "TIMESTAMP", "CPU_CYCLES", "INSTRUCTIONS", "CACHE_MISSES", "BRANCH_MISSES", "L2_CACHE_ACCESS", "LABEL"]
 COLUMNS_NEW = ["CORE_ID", "TIMESTAMP", "CPU_CYCLES", "INSTRUCTIONS", "CACHE_MISSES", "BRANCH_MISSES", "L2_CACHE_ACCESS", "LABEL", "DET_STATUS", "DET_PROB", "BENCH_ID"]
+COLUMNS_EENN = ["CORE_ID", "TIMESTAMP", "CPU_CYCLES", "INSTRUCTIONS", "CACHE_MISSES", "BRANCH_MISSES", "L2_CACHE_ACCESS", "LABEL", "DET_STATUS", "DET_PROB", "BENCH_ID", "EXIT_USED", "CYCLES_SPENT"]
 
 HEADER_OLD = "CORE_ID,TIMESTAMP,CPU_CYCLES,INSTRUCTIONS,CACHE_MISSES,BRANCH_MISSES,L2_CACHE_ACCESS,LABEL"
 HEADER_NEW = "CORE_ID,TIMESTAMP,CPU_CYCLES,INSTRUCTIONS,CACHE_MISSES,BRANCH_MISSES,L2_CACHE_ACCESS,LABEL,DET_STATUS,DET_PROB,BENCH_ID"
+HEADER_EENN = "CORE_ID,TIMESTAMP,CPU_CYCLES,INSTRUCTIONS,CACHE_MISSES,BRANCH_MISSES,L2_CACHE_ACCESS,LABEL,DET_STATUS,DET_PROB,BENCH_ID,EXIT_USED,CYCLES_SPENT"
 
 VALID_CORES = {'1', '2', '3'}
 
@@ -35,7 +37,7 @@ VALID_CORES = {'1', '2', '3'}
 def process_txt_to_clean_csv(input_file, output_file):
     """
     Lê um arquivo .txt bruto com dados PMU e gera diretamente o CSV final limpo.
-    Auto-detecta o formato (8 ou 11 colunas) a partir do cabeçalho CSV.
+    Auto-detecta o formato (8, 11 ou 13 colunas) a partir do cabeçalho CSV.
     """
     print(f"\n{'='*60}")
     print(f"  Processando: {os.path.basename(input_file)}")
@@ -46,7 +48,7 @@ def process_txt_to_clean_csv(input_file, output_file):
     lines_written = 0
     label_counts = {}
     bench_id_counts = {}
-    detected_format = None  # 'old' or 'new'
+    detected_format = None  # 'old', 'new' or 'eenn'
     expected_cols = None
     output_columns = None
     header_written = False
@@ -72,7 +74,11 @@ def process_txt_to_clean_csv(input_file, output_file):
 
             # Detecta formato a partir do cabeçalho
             if stripped.startswith("CORE_ID"):
-                if "BENCH_ID" in stripped:
+                if "EXIT_USED" in stripped:
+                    detected_format = 'eenn'
+                    expected_cols = 13
+                    output_columns = COLUMNS_EENN
+                elif "BENCH_ID" in stripped:
                     detected_format = 'new'
                     expected_cols = 11
                     output_columns = COLUMNS_NEW
@@ -101,8 +107,8 @@ def process_txt_to_clean_csv(input_file, output_file):
             label = parts[7].strip()
             label_counts[label] = label_counts.get(label, 0) + 1
 
-            # Contagem de BENCH_ID (formato novo)
-            if detected_format == 'new' and len(parts) >= 11:
+            # Contagem de BENCH_ID (formato novo/eenn)
+            if detected_format in ('new', 'eenn') and len(parts) >= 11:
                 bench_id = parts[10].strip()
                 bench_id_counts[bench_id] = bench_id_counts.get(bench_id, 0) + 1
 

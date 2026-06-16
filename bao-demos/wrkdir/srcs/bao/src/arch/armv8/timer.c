@@ -152,9 +152,21 @@ void timer_handler(irqid_t irq_id) {
 
         det_output_t out = detector_process_sample(id, &s);
 
-        // Store the detector result for this core
-        g_pmu_data[id].det_status          = (uint64_t)out.status;
+        // Store the detector result for this core (pack status, exit_used, and cycles_spent)
+        g_pmu_data[id].det_status          = (uint64_t)out.status |
+                                             ((uint64_t)out.exit_used << 8) |
+                                             ((uint64_t)out.cycles_spent << 16);
         g_pmu_data[id].det_probability_pct = (uint64_t)(out.probability * 100);
+
+        // Closed-loop mitigation: if an attack is detected, throttle execution
+        // of this CPU dynamically based on the classifier's probability/confidence
+        if (out.status == DET_ATTACK) {
+            uint64_t base_delay = 5000000; // Base delay loop limit
+            volatile uint64_t delay = (uint64_t)(out.probability * base_delay);
+            while (delay--) {
+                __asm__ volatile("nop");
+            }
+        }
 
         fp_context_restore(&s_fp_ctx[id]);
     }
