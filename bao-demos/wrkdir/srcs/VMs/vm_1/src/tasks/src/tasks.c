@@ -39,7 +39,20 @@ void task_orchestrator(void *arg) {
   }
   bw_ctx.sum = 0;
 
-#if BENCHMARK_FIXED
+#if defined(BENCHMARK_NONE)
+  // ============================================================
+  // Phase 1: IDLE -- no benchmarks, no workload stress.
+  // VM stays silent so VM0 can characterise clean PMU baselines.
+  // ============================================================
+  printf("[VM_1] BENCHMARK_NONE: idle (phase 1 - clean baseline).\n");
+  fflush(stdout);
+  ipc->current_label = LABEL_NONE;
+  asm volatile("dsb sy" ::: "memory");
+  while (1) {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+
+#elif BENCHMARK_FIXED
   // ============================================================
   // Scenario 8: FIXED — VM1 runs SHA in infinite loop
   // ============================================================

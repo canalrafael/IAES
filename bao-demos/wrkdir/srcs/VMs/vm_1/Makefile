@@ -78,7 +78,9 @@ INC_DIRS += $(FANN_INC)
 C_SRC += $(FANN_SRC)/floatfann.c
 
 LD_LIBS += -lm
-CFLAGS+= -Os -ffunction-sections -fdata-sections
+# Phase selector: BENCHMARK_NONE=phase1 (idle), BENCHMARK_FIXED=phase3, BENCHMARK_RANDOM=phase2
+BENCHMARK_MODE ?= BENCHMARK_NONE
+CFLAGS+= -Os -ffunction-sections -fdata-sections -D$(BENCHMARK_MODE)
 
 #neural network
 INC_NEURAL_NETWORK=$(BAO_DEMOS_WRKDIR_SRC)/neural_network/inc

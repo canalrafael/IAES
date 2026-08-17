@@ -178,6 +178,11 @@ run_attack_for() {
 case "$1" in
   start)
         echo "Starting ataques script"
+        # Phase 1 gate: if attack_mode.cfg contains "none", exit silently
+        if [ -f /root/attack_mode.cfg ] && [ "$(cat /root/attack_mode.cfg)" = "none" ]; then
+            echo "[VM3] attack_mode=none: attacks disabled (phase 1 - clean baseline)." > /dev/console
+            exit 0
+        fi
         if [ -f $PIDFILE ]; then
             echo "Already running."
             exit 1
