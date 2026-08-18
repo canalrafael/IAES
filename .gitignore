@@ -54,3 +54,7 @@ data/csv_final/
 *.swo
 *~
 .DS_Store
+
+# Accidentally cloned/embedded repos
+bao-demos/wrkdir/platforms/rpi4/firmware/
+prototype/stage2_bao/ncnn/
