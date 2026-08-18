@@ -36,6 +36,7 @@
 
 #include "tasks_project.h"
 #include "globals.h"
+extern void task_inference(void *arg);
 
 QueueHandle_t xPmuQueue = NULL;
 volatile float g_label_atual = 0.0f;
@@ -65,6 +66,16 @@ int main(void) {
   xTaskCreate(
     task_monitor,
     "taskMonitor",
+    TASK_STACK_SIZE,
+    NULL,
+    OTHER_TASK_PRIORITY,
+    NULL
+  );
+
+  
+  xTaskCreate(
+    task_inference,
+    "taskInference",
     TASK_STACK_SIZE,
     NULL,
     OTHER_TASK_PRIORITY,
