@@ -33,6 +33,9 @@ The project uses a **Dockerized build environment** for full portability. All cr
 ### Prerequisites
 - [Docker](https://docs.docker.com/get-docker/) installed and running.
 - An SD card mounted at `/media/$USER/BOOT/` (for deployment).
+- Internet access on first run: `./build.sh` fetches the Raspberry Pi
+  firmware and builds u-boot and TF-A's `bl31.bin` automatically (cached
+  afterwards in `bao-demos/wrkdir/imgs/rpi4/`).
 
 ### Quick Start
 
@@ -40,7 +43,7 @@ The project uses a **Dockerized build environment** for full portability. All cr
 # 1. Initialize submodules (Bao Hypervisor Core)
 git submodule update --init --recursive
 
-# 2. Full build + copy to SD card (one command)
+# 2. Full build + fetch boot assets + copy to SD card (one command)
 ./build.sh
 ```
 
@@ -48,11 +51,12 @@ git submodule update --init --recursive
 
 | Command | Description |
 |---|---|
-| `./build.sh` | Full build (all VMs + Bao) and copy `bao.bin` to SD card |
+| `./build.sh` | Full build (all VMs + Bao), fetch boot assets and copy everything to SD card |
 | `./build.sh vms` | Build all VMs (vm_0 through vm_3) |
 | `./build.sh vm <N>` | Build a specific VM (0–3). VM 3 (Linux) is slow on first build |
 | `./build.sh bao` | Build only the Bao hypervisor |
-| `./build.sh copy` | Copy `bao.bin` to SD card (skip build) |
+| `./build.sh assets` | Fetch/build the Raspberry Pi firmware, u-boot and `bl31.bin` |
+| `./build.sh copy` | Copy boot files to SD card (skip build) |
 | `./build.sh clean` | Clean all build artifacts |
 | `./build.sh shell` | Open an interactive shell inside the build container |
 

@@ -5,12 +5,13 @@
 # Builds the entire project inside a Docker container for full portability.
 #
 # Usage:
-#   ./build.sh              # Full build + copy to SD card
+#   ./build.sh              # Full build + fetch boot assets + copy to SD card
 #   ./build.sh vms          # Build only VMs (vm_0 through vm_3)
 #   ./build.sh vm 0         # Build only vm_0
 #   ./build.sh vm 3         # Build only vm_3 (Linux — slow first time)
 #   ./build.sh bao          # Build only the Bao hypervisor
-#   ./build.sh copy         # Copy bao.bin to SD card (no build)
+#   ./build.sh assets       # Fetch/build firmware, u-boot and bl31.bin
+#   ./build.sh copy         # Copy boot files to SD card (no build)
 #   ./build.sh clean        # Clean all build artifacts
 #   ./build.sh shell        # Open interactive shell inside the container
 #
@@ -83,20 +84,32 @@ build_all() {
     build_bao
 }
 
+fetch_boot_assets() {
+    info "Fetching/building firmware, u-boot and bl31.bin..."
+    run_in_container "source env.bash && ./scripts/util/fetch_boot_assets.sh"
+    ok "Boot assets ready."
+}
+
 copy_to_sdcard() {
-    local bao_bin="${SCRIPT_DIR}/bao-demos/wrkdir/imgs/rpi4/linux+freertos/bao.bin"
+    local plat_dir="${SCRIPT_DIR}/bao-demos/wrkdir/imgs/rpi4"
+    local firmware_boot="${plat_dir}/firmware/boot"
+    local config_txt="${SCRIPT_DIR}/bao-demos/platforms/rpi4/config.txt"
+    local bl31_bin="${plat_dir}/bl31.bin"
+    local uboot_bin="${plat_dir}/u-boot.bin"
+    local bao_bin="${plat_dir}/linux+freertos/bao.bin"
     local real_user="${SUDO_USER:-$USER}"
     local sdcard="/media/${real_user}/BOOT/"
 
     # Allow override via environment variable
     sdcard="${BAO_DEMOS_SDCARD:-$sdcard}"
 
-    info "Copying bao.bin to SD card at '${sdcard}'..."
-
-    if [[ ! -f "$bao_bin" ]]; then
-        error "bao.bin not found at '$bao_bin'. Build first with: ./build.sh"
-        exit 1
-    fi
+    for f in "$firmware_boot" "$config_txt" "$bl31_bin" "$uboot_bin" "$bao_bin"; do
+        if [[ ! -e "$f" ]]; then
+            error "'$f' not found."
+            error "Run './build.sh assets' (and './build.sh bao') first, or just './build.sh'."
+            exit 1
+        fi
+    done
 
     if [[ ! -d "$sdcard" ]]; then
         error "SD card not found at '$sdcard'"
@@ -105,13 +118,16 @@ copy_to_sdcard() {
         exit 1
     fi
 
-    cp -v "$bao_bin" "$sdcard"
+    info "Copying boot files to SD card at '${sdcard}'..."
+    cp -rv "$firmware_boot"/. "$sdcard"
+    cp -v "$config_txt" "$bl31_bin" "$uboot_bin" "$bao_bin" "$sdcard"
     sync
-    ok "bao.bin copied to '$sdcard'. Safe to eject!"
+    ok "Boot files copied to '$sdcard'. Safe to eject!"
 }
 
 deploy() {
     build_all
+    fetch_boot_assets
     copy_to_sdcard
 }
 
@@ -137,11 +153,12 @@ usage() {
     echo "Usage: $0 [command] [args]"
     echo ""
     echo "Commands:"
-    echo "  (none)         Full build (Docker) + copy to SD card"
+    echo "  (none)         Full build (Docker) + fetch boot assets + copy to SD card"
     echo "  vms            Build all VMs (0-3)"
     echo "  vm <N>         Build a specific VM (0-3)"
     echo "  bao            Build only the Bao hypervisor"
-    echo "  copy           Copy bao.bin to SD card (skip build)"
+    echo "  assets         Fetch/build firmware, u-boot and bl31.bin"
+    echo "  copy           Copy boot files to SD card (skip build)"
     echo "  clean          Clean all build artifacts"
     echo "  shell          Open interactive shell in the container"
     echo "  help           Show this help message"
@@ -162,6 +179,7 @@ main() {
         vms)   build_all_vms ;;
         vm)    build_vm "${2:?ERROR: VM index required (0-3)}" ;;
         bao)   build_bao ;;
+        assets) fetch_boot_assets ;;
         clean) do_clean ;;
         shell) open_shell ;;
         help|--help|-h) usage ;;

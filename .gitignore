@@ -49,6 +49,8 @@ data/csv_final/
 !bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/etc/
 !bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/etc/**
 
+/BOOT/
+
 # Misc
 *.swp
 *.swo
