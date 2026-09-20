@@ -51,6 +51,10 @@ data/csv_final/
 
 /BOOT/
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Misc
 *.swp
 *.swo
