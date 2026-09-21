@@ -106,7 +106,7 @@
 // Scenario 8: FIXED benchmarks (VM1=SHA, VM2=FFT) + persistent Meltdown (VM3)
 //             Core 1: SHA loop, Core 2: FFT loop, Core 3: Meltdown loop
 // ===============================================
-#define SCENARIO 7 // <-- CHANGE HERE TO SWITCH SCENARIO
+#define SCENARIO 9 // <-- CHANGE HERE TO SWITCH SCENARIO
 
 #if SCENARIO == 1
 // Solo benchmarks: VM0 (monitor) + VM1 (benchmarks)
@@ -188,13 +188,26 @@
 #define BENCHMARK_RANDOM 0
 #define BENCHMARK_FIXED 1
 #define ACTIVE_IPC_CHANNELS 3 // VM1 + VM2 + VM3
+#elif SCENARIO == 9
+#define EXEC_VM_0 1
+#define EXEC_VM_1 0
+#define EXEC_VM_2 1
+#define EXEC_VM_3 0
+#define VM_2_IS_LINUX 1
+#define SCENARIO_LABEL_BENCH 0
+#define BENCHMARK_RANDOM 0
+#define ACTIVE_IPC_CHANNELS 1
 #else
-#error "SCENARIO deve ser 1, 2, 3, 4, 5, 6, 7 ou 8"
+#error "SCENARIO deve ser 1, 2, 3, 4, 5, 6, 7, 8 ou 9"
 #endif
 
 // Default BENCHMARK_FIXED for scenarios that don't define it
 #ifndef BENCHMARK_FIXED
 #define BENCHMARK_FIXED 0
+#endif
+
+#ifndef VM_2_IS_LINUX
+#define VM_2_IS_LINUX 0
 #endif
 
 #define VM_QNT 4

@@ -33,6 +33,9 @@ struct config config =
 #elif EXEC_VM_3
             [0] = { .size = 0x00010000 },  // Channel 0: VM0 <-> VM3 (scenario 2)
 #endif
+#if !EXEC_VM_1 && EXEC_VM_2 && !EXEC_VM_3
+            [0] = { .size = 0x00010000 },  // Channel 0: VM0 <-> VM2 (scenario 9)
+#endif
         },
 
         .vmlist_size = RUNNING_VMs,
@@ -81,6 +84,10 @@ struct config config =
                                      {.base = 0x70020000, .size = 0x00010000, .shmem_id = 1,
                                       .interrupt_num = 1, .interrupts = (irqid_t[]){53}},
 #elif EXEC_VM_3
+                                     {.base = 0x70020000, .size = 0x00010000, .shmem_id = 0,
+                                      .interrupt_num = 1, .interrupts = (irqid_t[]){52}},
+#endif
+#if !EXEC_VM_1 && EXEC_VM_2 && !EXEC_VM_3
                                      {.base = 0x70020000, .size = 0x00010000, .shmem_id = 0,
                                       .interrupt_num = 1, .interrupts = (irqid_t[]){52}},
 #endif
@@ -172,6 +179,64 @@ struct config config =
                 // -------------------
                 // CORE 2 - BEGINNING
                 // -------------------
+#if VM_2_IS_LINUX
+                {
+                    .image = {.base_addr = 0x0,
+
+                              .load_addr = VM_IMAGE_OFFSET(vm_2_img),
+                              .size = VM_IMAGE_SIZE(vm_2_img)},
+
+                    .entry = 0x0,
+#if CACHE_COLORING
+                    .colors = 0b110,
+#else
+                    .colors = 0b0,
+#endif
+                    .cpu_affinity = 0b100,
+
+                    .platform = {.cpu_num = 1,
+
+                                 .region_num = 1,
+                                 .regions =
+                                     (struct vm_mem_region[]){
+                                         {.base = 0x0, .size = 0x40000000}},
+
+                                 .ipc_num = 1,
+                                 .ipcs = (struct ipc[]){{.base = 0x70000000,
+                                                         .size = 0x00010000,
+                                                         .shmem_id = 0,
+                                                         .interrupt_num = 1,
+                                                         .interrupts =
+                                                             (irqid_t[]){52}}},
+
+                                 .dev_num = 4,
+                                 .devs =
+                                     (struct vm_dev_region[]){
+                                         {/* GPIO para Pin Muxing. Aligned to 4KB! */
+                                          .pa = 0xfe200000,
+                                          .va = 0xfe200000,
+                                          .size = 0x1000},
+                                         {/* UART4 (PL011) console para o Linux. Aligned to 4KB! */
+                                          .pa = 0xfe201000,
+                                          .va = 0xfe201000,
+                                          .size = 0x2000,
+                                          .interrupt_num = 1,
+                                          .interrupts = (irqid_t[]){128}},
+                                         {/* UART1 (mini-UART) para DEBUG. Aligned to 4KB! */
+                                          .pa = 0xfe215000,
+                                          .va = 0xfe215000,
+                                          .size = 0x1000},
+                                         {/* Arch timer interrupt */
+                                          .interrupt_num = 1,
+                                          .interrupts = (irqid_t[]){27}},
+                                     },
+                                 .arch = {.gic =
+                                              {
+                                                  .gicd_addr = 0xF9010000,
+                                                  .gicc_addr = 0xF9020000,
+                                              }}},
+                },
+#else
                 {
                     .image = {.base_addr = 0x0,
 
@@ -220,6 +285,7 @@ struct config config =
                                                   .gicc_addr = 0xF9020000,
                                               }}},
                 },
+#endif // VM_2_IS_LINUX
 // ------------
 // CORE 2 - END
 // ------------
