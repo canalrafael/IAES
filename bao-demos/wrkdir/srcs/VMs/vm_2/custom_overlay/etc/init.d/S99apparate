@@ -1,0 +1,40 @@
+#!/bin/sh
+# /etc/init.d/S99apparate
+#
+# Signals VM0 that the Linux boot has finished, so the monitor can print a
+# confirmation on its serial console (VM2's own console is on a different UART).
+#
+# IPC_Channel layout (shared with VM0):
+#   offset 0: signal_ready
+#   offset 4: resume
+#   offset 8: current_label
+#   offset 12: boot_done
+
+IPC_SIGNAL=/root/ipc_signal
+BOOT_DONE_OFFSET=12
+
+case "$1" in
+  start)
+        if [ ! -c /dev/mem ]; then
+            echo "[VM2] ERROR: /dev/mem not found, cannot signal VM0" > /dev/console
+            exit 1
+        fi
+        if [ ! -x $IPC_SIGNAL ]; then
+            echo "[VM2] ERROR: $IPC_SIGNAL not found" > /dev/console
+            exit 1
+        fi
+        $IPC_SIGNAL write $BOOT_DONE_OFFSET 1
+        echo "[VM2] boot finished, signaled VM0 (boot_done=1)" > /dev/console
+        ;;
+  stop)
+        $IPC_SIGNAL write $BOOT_DONE_OFFSET 0 2>/dev/null
+        ;;
+  restart|reload)
+        $0 stop
+        $0 start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+exit 0

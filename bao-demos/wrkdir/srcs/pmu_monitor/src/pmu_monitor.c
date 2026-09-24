@@ -25,6 +25,7 @@ typedef struct {
     volatile uint32_t signal_ready;   // VMx -> VM0: "pause done"
     volatile uint32_t resume;         // VM0 -> VMx: "may continue"
     volatile uint32_t current_label;  // VMx -> VM0: attack/benchmark label
+    volatile uint32_t boot_done;      // VMx -> VM0: Linux boot finished
 } IPC_Channel;
 
 // Labels stored locally by VM0
@@ -44,6 +45,7 @@ void ipc_init_channels(void) {
     ch_vm1->signal_ready = 0;
     ch_vm1->resume = 0;
     ch_vm1->current_label = 0;
+    ch_vm1->boot_done = 0;
     cache_clean_invalidate((void*)ch_vm1);
 #endif
 
@@ -52,6 +54,7 @@ void ipc_init_channels(void) {
     ch_vm2->signal_ready = 0;
     ch_vm2->resume = 0;
     ch_vm2->current_label = 0;
+    ch_vm2->boot_done = 0;
     cache_clean_invalidate((void*)ch_vm2);
 #endif
 
@@ -60,6 +63,7 @@ void ipc_init_channels(void) {
     ch_vm3->signal_ready = 0;
     ch_vm3->resume = 0;
     ch_vm3->current_label = 0;
+    ch_vm3->boot_done = 0;
     cache_clean_invalidate((void*)ch_vm3);
 #endif
 }
@@ -192,6 +196,16 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
 
     // Scenario labels are defined at compile time
     // (SCENARIO_LABEL_BENCH / SCENARIO_LABEL_ATTACK in regulation.h)
+
+#if EXEC_VM_2
+    // One-shot notification: VM2 (Linux) finished booting.
+    static int vm2_boot_reported = 0;
+    if (!vm2_boot_reported && ch_vm2->boot_done == 1) {
+        vm2_boot_reported = 1;
+        printf("\n[VM0] >>> VM2 LINUX BOOT OK <<<\n");
+        fflush(stdout);
+    }
+#endif
 
     // Check barrier: ALL active VMs have signaled?
     int all_ready = 1;
