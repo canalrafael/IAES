@@ -82,7 +82,11 @@ class SplitInferenceClient:
         self.frame_idx = 0
 
     def _simulate_network_latency(self, tensor: torch.Tensor) -> float:
-        """Returns the emulated transfer time in seconds for the given tensor."""
+        """Returns the emulated transfer time in seconds for the given tensor.
+        Returns 0.0 when network_bw_mbps=0.0 (hardware mode — no emulation).
+        """
+        if self.network_bw_mbps <= 0.0:
+            return 0.0
         num_bytes = tensor.nelement() * tensor.element_size()
         transfer_time_s = (num_bytes * 8) / (self.network_bw_mbps * 1e6)
         rtt_s = self.network_rtt_ms / 1000.0
@@ -162,8 +166,11 @@ class SplitInferenceClient:
             # actual socket transfer — this makes the controller see
             # the realistic total cost of offloading, as it would on
             # a real Raspberry Pi 4 connected via Ethernet to a server.
+            # In hardware mode (network_bw_mbps=0.0), this returns 0.0
+            # and the sleep is skipped — real physical latency is used.
             emulated_net_delay = self._simulate_network_latency(z)
-            time.sleep(emulated_net_delay)
+            if emulated_net_delay > 0.0:
+                time.sleep(emulated_net_delay)
 
             # Actual socket transfer
             if self._sock is None:
