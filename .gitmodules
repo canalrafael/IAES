@@ -1,0 +1,3 @@
+[submodule "apparate-ae/apparate"]
+	path = apparate-ae/apparate
+	url = https://github.com/dywsjtu/apparate.git

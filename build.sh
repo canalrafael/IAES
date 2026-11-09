@@ -99,6 +99,10 @@ copy_to_sdcard() {
     local bao_bin="${plat_dir}/linux+freertos/bao.bin"
     local real_user="${SUDO_USER:-$USER}"
     local sdcard="/media/${real_user}/BOOT/"
+    # Some desktops (udisks2) mount removable media under /run/media instead
+    if ! mountpoint -q "$sdcard" && mountpoint -q "/run/media/${real_user}/BOOT/"; then
+        sdcard="/run/media/${real_user}/BOOT/"
+    fi
 
     # Allow override via environment variable
     sdcard="${BAO_DEMOS_SDCARD:-$sdcard}"
@@ -115,6 +119,15 @@ copy_to_sdcard() {
         error "SD card not found at '$sdcard'"
         error "Make sure the SD card is mounted."
         error "Or set BAO_DEMOS_SDCARD: BAO_DEMOS_SDCARD=/path/to/mount ./build.sh copy"
+        exit 1
+    fi
+
+    # A leftover directory with the same name is not the card: copying there
+    # silently leaves the old bao.bin on the SD card.
+    if ! mountpoint -q "$sdcard"; then
+        error "'$sdcard' exists but is not a mounted filesystem (stale directory?)."
+        error "Check where the card is mounted with: lsblk -o NAME,LABEL,MOUNTPOINTS"
+        error "Then: BAO_DEMOS_SDCARD=/path/to/mount ./build.sh copy"
         exit 1
     fi
 

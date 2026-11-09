@@ -75,7 +75,10 @@ run_attacks() {
     echo "[VM3] Starting attack orchestrator (mode=$MODE, spectre=$L_SPECTRE armageddon=$L_ARMAGEDDON meltdown=$L_MELTDOWN zombieload=$L_ZOMBIELOAD)..." | tee $LOGFILE > /dev/console
 
     while true; do
-    if [ "$MODE" = "meltdown_only" ]; then
+    if [ "$MODE" = "contention" ]; then
+            echo "[VM3] memory-bandwidth contention (starts after 60s)..." | tee -a $LOGFILE > /dev/console
+            /root/memhog 60
+        elif [ "$MODE" = "meltdown_only" ]; then
             run_attack_for "/root/meltdown" "Meltdown" $L_MELTDOWN
         elif [ "$MODE" = "with_bench" ]; then
             run_bench_for $L_BENCH

@@ -9,6 +9,10 @@ TARGET := $(wrkdir_demo_imgs)/$(NAME).bin
 wrkdir_src := $(ROOT_DIR)
 bao_demos ?= $(BAO_DEMOS)
 
+# VM2 (Apparate) rootfs adds python3 + numpy, so it uses its own buildroot
+# defconfig instead of the shared one (keeps the VM3 attacker rootfs lean).
+buildroot_defcfg := $(BAO_DEMOS)/guests/linux/buildroot/aarch64-apparate.config
+
 include $(BAO_DEMOS)/guests/linux/make.mk
 
 BUILDROOT_DIR := $(buildroot_src)
@@ -16,9 +20,12 @@ CC_ARM := $(BUILDROOT_DIR)/output/host/bin/aarch64-linux-gcc
 CUSTOM_OVERLAY := $(ROOT_DIR)/custom_overlay
 OVERLAY_DIR := $(CUSTOM_OVERLAY)/root
 
-CUSTOM_APPS := $(OVERLAY_DIR)/ipc_signal
+CUSTOM_APPS := $(OVERLAY_DIR)/ipc_signal $(OVERLAY_DIR)/ipc_say
 
 $(OVERLAY_DIR)/ipc_signal: $(OVERLAY_DIR)/ipc_signal.c | $(buildroot_image)
+	$(CC_ARM) -O2 $< -o $@
+
+$(OVERLAY_DIR)/ipc_say: $(OVERLAY_DIR)/ipc_say.c | $(buildroot_image)
 	$(CC_ARM) -O2 $< -o $@
 
 # Repack the rootfs with the VM2 overlay (ipc_signal + S99apparate).
@@ -39,4 +46,4 @@ $(eval $(call build-linux, $(TARGET), $(VM2_DTS)))
 clean:
 	rm -f $(TARGET)
 	rm -f $(wrkdir_demo_imgs)/*.dtb
-	rm -f $(OVERLAY_DIR)/ipc_signal
+	rm -f $(OVERLAY_DIR)/ipc_signal $(OVERLAY_DIR)/ipc_say

@@ -316,7 +316,13 @@ struct config config =
                                      (struct vm_mem_region[]){
                                          {.base = 0x0, .size = 0x10000000}},
 
+#if !EXEC_VM_1 && EXEC_VM_2 && EXEC_VM_3
+                                 // scenario 10: VM3 is pure memory contention,
+                                 // no IPC (the monitor ignores it).
+                                 .ipc_num = 0,
+#else
                                  .ipc_num = 1,
+#endif
                                  .ipcs = (struct ipc[]){{.base = 0x70000000,
                                                          .size = 0x00010000,
 #if EXEC_VM_2 && EXEC_VM_1
@@ -341,8 +347,15 @@ struct config config =
                                           .pa = 0xfe201000,
                                           .va = 0xfe201000,
                                           .size = 0x2000,
+#if !EXEC_VM_1 && EXEC_VM_2 && EXEC_VM_3
+                                          // scenario 10: VM2 owns the uart4 IRQ (128).
+                                          // VM3 maps the UART for polled TX only (no IRQ),
+                                          // so the GIC interrupt is not claimed twice.
+                                          .interrupt_num = 0},
+#else
                                           .interrupt_num = 1,
                                           .interrupts = (irqid_t[]){128}},
+#endif
                                          {/* UART1 (FreeRTOS) para DEBUG do Linux. Aligned to 4KB! */
                                           .pa = 0xfe215000,
                                           .va = 0xfe215000,

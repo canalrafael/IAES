@@ -60,7 +60,12 @@ CUSTOM_APPS := $(OVERLAY_DIR)/spectre \
                $(OVERLAY_DIR)/zombieload \
                $(OVERLAY_DIR)/benchmark \
                $(OVERLAY_DIR)/ipc_signal \
-               $(OVERLAY_DIR)/ipc_sync
+               $(OVERLAY_DIR)/ipc_sync \
+               $(OVERLAY_DIR)/memhog
+
+$(OVERLAY_DIR)/memhog: $(OVERLAY_DIR)/memhog.c | $(CC_ARM)
+	@echo ">> Compiling memhog (memory-bandwidth contention)..."
+	$(CC_ARM) -O2 $< -o $@
 
 
 $(BUILDROOT_DIR)/output/host/bin/aarch64-buildroot-linux-uclibc-gcc: | $(BUILDROOT_DIR) $(linux_src)
@@ -108,7 +113,10 @@ ATTACK_MODE_CFG := $(OVERLAY_DIR)/attack_mode.cfg
 
 $(ATTACK_MODE_CFG): $(REGULATION_H)
 	@SCENARIO=$$(grep -oP '^\s*#define\s+SCENARIO\s+\K[0-9]+' $(REGULATION_H)); \
-	if [ "$$SCENARIO" = "8" ]; then \
+	if [ "$$SCENARIO" = "10" ]; then \
+		echo "contention" > $@; \
+		echo ">> attack_mode.cfg: contention (scenario 10)"; \
+	elif [ "$$SCENARIO" = "8" ]; then \
 		echo "meltdown_only" > $@; \
 		echo ">> attack_mode.cfg: meltdown_only (scenario 8)"; \
 	elif [ "$$SCENARIO" = "7" ]; then \

@@ -38,6 +38,7 @@ bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/root/zombieload
 bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/root/benchmark
 bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/root/ipc_signal
 bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/root/ipc_sync
+bao-demos/wrkdir/srcs/VMs/vm_3/custom_overlay/root/memhog
 bao-demos/wrkdir/srcs/VMs/vm_2/custom_overlay/root/ipc_signal
 
 # Data / Logs
@@ -56,8 +57,14 @@ data/csv_final/
 
 /BOOT/
 
+apresentacao/
+
 # Misc
 *.swp
 *.swo
 *~
 .DS_Store
+
+# Staged Apparate payload for VM2 rootfs (code in submodule, pickles are large)
+bao-demos/wrkdir/srcs/VMs/vm_2/custom_overlay/root/apparate-ae/
+bao-demos/wrkdir/srcs/VMs/vm_2/custom_overlay/root/ipc_say

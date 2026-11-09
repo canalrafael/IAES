@@ -31,13 +31,14 @@ build() {
 }
 
 # Build logic
+failed=0
 if "$build_all"; then
   for i in {0..3}; do
     VM_INDEX="$i" # important: set VM_INDEX inside the loop
-    build "$VM_INDEX" #  Call your build command
+    build "$VM_INDEX" || failed=1 #  Call your build command
   done
 elif [ -n "$VM_INDEX" ]; then
-  build "$VM_INDEX" # Call build command with the provided VM_INDEX
+  build "$VM_INDEX" || failed=1 # Call build command with the provided VM_INDEX
 else
   echo "Error:  VM_INDEX is not defined." >&2
   exit 1
@@ -52,4 +53,5 @@ find $BAO_DEMOS_WRKDIR_IMGS
 # make -C $BAO_DEMOS_FREERTOS PLATFORM=$PLATFORM $FREERTOS_PARAMS
 # echo $CROSS_COMPILE
 
-exit 0
+# Propagate make failures so build.sh does not report a stale image as built
+exit $failed

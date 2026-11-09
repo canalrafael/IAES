@@ -28,6 +28,14 @@ typedef struct {
     volatile uint32_t boot_done;      // VMx -> VM0: Linux boot finished
 } IPC_Channel;
 
+// Text relay slot (VM2 -> VM0): a throttled status line Apparate writes and
+// VM0 prints to its serial console. Lives above the IPC_Channel struct in the
+// same shared region. Offsets/layout must match ipc_report.py.
+#define IPC_TEXT_SEQ_OFF 0x100
+#define IPC_TEXT_LEN_OFF 0x104
+#define IPC_TEXT_BUF_OFF 0x108
+#define IPC_TEXT_MAX     200
+
 // Labels stored locally by VM0
 // Labels are defined at compile time by SCENARIO_LABEL_BENCH / SCENARIO_LABEL_ATTACK
 // (see regulation.h)
@@ -56,9 +64,15 @@ void ipc_init_channels(void) {
     ch_vm2->current_label = 0;
     ch_vm2->boot_done = 0;
     cache_clean_invalidate((void*)ch_vm2);
+    // Text relay slot: shared RAM holds garbage at power-on, which the reader
+    // would otherwise print as a bogus first [VM2] line.
+    volatile uint8_t* txt = (volatile uint8_t*)IPC_VM2_ADDR;
+    *(volatile uint32_t*)(txt + IPC_TEXT_SEQ_OFF) = 0;
+    *(volatile uint32_t*)(txt + IPC_TEXT_LEN_OFF) = 0;
+    cache_clean_invalidate((void*)(txt + IPC_TEXT_SEQ_OFF));
 #endif
 
-#if EXEC_VM_3
+#if EXEC_VM_3 && !VM_2_IS_LINUX
     IPC_Channel* ch_vm3 = (IPC_Channel*) IPC_VM3_ADDR;
     ch_vm3->signal_ready = 0;
     ch_vm3->resume = 0;
@@ -179,7 +193,7 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
 #if EXEC_VM_2
     IPC_Channel* ch_vm2 = (IPC_Channel*) IPC_VM2_ADDR;
 #endif
-#if EXEC_VM_3
+#if EXEC_VM_3 && !VM_2_IS_LINUX
     IPC_Channel* ch_vm3 = (IPC_Channel*) IPC_VM3_ADDR;
 #endif
 
@@ -190,7 +204,7 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
 #if EXEC_VM_2
     cache_clean_invalidate((void*)ch_vm2);
 #endif
-#if EXEC_VM_3
+#if EXEC_VM_3 && !VM_2_IS_LINUX
     cache_clean_invalidate((void*)ch_vm3);
 #endif
 
@@ -205,6 +219,29 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
         printf("\n[VM0] >>> VM2 LINUX BOOT OK <<<\n");
         fflush(stdout);
     }
+
+    // Relay VM2's latest status line (if a new one is available) to the serial
+    // console. VM2 bumps the seq after writing; we print only on change.
+    {
+        volatile uint8_t* txt = (volatile uint8_t*)IPC_VM2_ADDR;
+        for (uint32_t o = IPC_TEXT_SEQ_OFF; o < IPC_TEXT_BUF_OFF + IPC_TEXT_MAX; o += 64) {
+            cache_clean_invalidate((void*)(txt + o));
+        }
+        static uint32_t last_text_seq = 0;
+        uint32_t seq = *(volatile uint32_t*)(txt + IPC_TEXT_SEQ_OFF);
+        if (seq != last_text_seq) {
+            last_text_seq = seq;
+            uint32_t len = *(volatile uint32_t*)(txt + IPC_TEXT_LEN_OFF);
+            if (len > IPC_TEXT_MAX) len = IPC_TEXT_MAX;
+            char buf[IPC_TEXT_MAX + 1];
+            for (uint32_t i = 0; i < len; i++) {
+                buf[i] = (char)((volatile char*)(txt + IPC_TEXT_BUF_OFF))[i];
+            }
+            buf[len] = '\0';
+            printf("[VM2] %s\n", buf);
+            fflush(stdout);
+        }
+    }
 #endif
 
     // Check barrier: ALL active VMs have signaled?
@@ -215,7 +252,7 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
 #if EXEC_VM_2
     if (ch_vm2->signal_ready != 1) all_ready = 0;
 #endif
-#if EXEC_VM_3
+#if EXEC_VM_3 && !VM_2_IS_LINUX
     if (ch_vm3->signal_ready != 1) all_ready = 0;
 #endif
 
@@ -234,7 +271,7 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
         ch_vm2->resume = 1;
         cache_clean_invalidate((void*)ch_vm2);
 #endif
-#if EXEC_VM_3
+#if EXEC_VM_3 && !VM_2_IS_LINUX
         ch_vm3->signal_ready = 0;
         ch_vm3->resume = 1;
         cache_clean_invalidate((void*)ch_vm3);
@@ -258,7 +295,7 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
         // ── Dynamic label (scenario 7) ──
         // When VM3 is running benchmarks (current_label 1-7), all VMs get label=0
         // When VM3 is attacking (current_label>=10), VM1/VM2=SCENARIO_LABEL_BENCH, VM3=SCENARIO_LABEL_ATTACK
-#if EXEC_VM_3
+#if EXEC_VM_3 && !VM_2_IS_LINUX
         IPC_Channel* ch_vm3_label = (IPC_Channel*) IPC_VM3_ADDR;
         cache_clean_invalidate((void*)ch_vm3_label);
         uint32_t vm3_current = ch_vm3_label->current_label;
@@ -301,7 +338,7 @@ void collect_and_process_pmu_sample(uint64_t timer_freq) {
         }
 #endif
 
-#if EXEC_VM_3
+#if EXEC_VM_3 && !VM_2_IS_LINUX
         // Collect core 3 (VM3 = Linux attacks)
         if (current_sample_index < MAX_SAMPLES) {
             FANN_sample sample;

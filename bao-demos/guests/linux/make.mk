@@ -13,7 +13,7 @@ $(linux_src):
 buildroot_repo:=https://github.com/buildroot/buildroot.git
 buildroot_version:=2022.11
 buildroot_src:=$(wrkdir_src)/buildroot-$(ARCH)-$(linux_version)
-buildroot_defcfg:=$(bao_demos)/guests/linux/buildroot/$(ARCH).config
+buildroot_defcfg?=$(bao_demos)/guests/linux/buildroot/$(ARCH).config
 
 $(buildroot_src):
 	git clone --depth 1 --branch $(buildroot_version) $(buildroot_repo)\
