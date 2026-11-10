@@ -113,7 +113,10 @@ ATTACK_MODE_CFG := $(OVERLAY_DIR)/attack_mode.cfg
 
 $(ATTACK_MODE_CFG): $(REGULATION_H)
 	@SCENARIO=$$(grep -oP '^\s*#define\s+SCENARIO\s+\K[0-9]+' $(REGULATION_H)); \
-	if [ "$$SCENARIO" = "10" ]; then \
+	if [ "$$SCENARIO" = "11" ]; then \
+		echo "random_periodic" > $@; \
+		echo ">> attack_mode.cfg: random_periodic (scenario 11)"; \
+	elif [ "$$SCENARIO" = "10" ]; then \
 		echo "contention" > $@; \
 		echo ">> attack_mode.cfg: contention (scenario 10)"; \
 	elif [ "$$SCENARIO" = "8" ]; then \

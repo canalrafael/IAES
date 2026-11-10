@@ -36,6 +36,7 @@
 
 #include "tasks_project.h"
 #include "globals.h"
+#include "bench_concurrent.h"
 
 QueueHandle_t xPmuQueue = NULL;
 volatile float g_label_atual = 0.0f;
@@ -62,14 +63,19 @@ int main(void) {
       while(1);
   }
   printf("Queue created successfully\n");
+  // PMU monitor runs above the benchmark load so its sampling cadence is kept.
   xTaskCreate(
     task_monitor,
     "taskMonitor",
     TASK_STACK_SIZE,
     NULL,
-    OTHER_TASK_PRIORITY,
+    OTHER_TASK_PRIORITY + 1,
     NULL
   );
+
+  // SCENARIO 11: VM0 also carries the concurrent benchmark background load
+  // (2-3 benchmarks together, re-drawn continuously), next to the monitor.
+  bench_concurrent_start();
 
   vTaskStartScheduler();
   while (1) {

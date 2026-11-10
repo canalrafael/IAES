@@ -50,7 +50,7 @@
     };
 
     memory@0 {
-        reg = <0x0 0x0 0x0 0x40000000>;
+        reg = <0x0 0x0 0x0 0x10000000>;
         device_type = "memory";
     };
 
@@ -152,7 +152,7 @@
 
     chosen {
         stdout-path = "serial1:115200n8";
-        bootargs = "console=ttyAMA1,115200 earlycon=pl011,mmio32,0xfe201800 clk_ignore_unused fw_devlink=permissive ip=192.168.2.5 carrier_timeout=0 vm_role=apparate";
+        bootargs = "console=ttyAMA1,115200 earlycon=pl011,mmio32,0xfe201800 clk_ignore_unused fw_devlink=permissive ip=192.168.2.5 carrier_timeout=0 vm_role=model";
         linux,initrd-start = <0x0 0x04000000>;
         linux,initrd-end   = <0x0 0x06000000>; /* SED_PLACEHOLDER */
     };

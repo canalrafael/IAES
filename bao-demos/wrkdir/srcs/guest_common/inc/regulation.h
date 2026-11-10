@@ -106,7 +106,7 @@
 // Scenario 8: FIXED benchmarks (VM1=SHA, VM2=FFT) + persistent Meltdown (VM3)
 //             Core 1: SHA loop, Core 2: FFT loop, Core 3: Meltdown loop
 // ===============================================
-#define SCENARIO 10 // <-- CHANGE HERE TO SWITCH SCENARIO
+#define SCENARIO 11 // <-- CHANGE HERE TO SWITCH SCENARIO
 
 #if SCENARIO == 1
 // Solo benchmarks: VM0 (monitor) + VM1 (benchmarks)
@@ -198,7 +198,7 @@
 #define BENCHMARK_RANDOM 0
 #define ACTIVE_IPC_CHANNELS 1
 #elif SCENARIO == 10
-// Apparate under contention: VM0 (monitor) + VM2 (Linux Apparate) +
+// Linux under contention: VM0 (monitor) + VM2 (Linux) +
 // VM3 (Linux memory-bandwidth contention). VM3 has no IPC; the monitor
 // ignores it (see pmu_monitor.c guard). Relay is VM0 <-> VM2 only.
 #define EXEC_VM_0 1
@@ -210,8 +210,24 @@
 #define SCENARIO_LABEL_ATTACK 1
 #define BENCHMARK_RANDOM 0
 #define ACTIVE_IPC_CHANNELS 1
+#elif SCENARIO == 11
+// Pipeline completo: VM0 (monitor PMU + benchmarks) + VM1 (benchmarks) +
+// VM2 (Linux, modelo+controlador) + VM3 (Linux, suite de ataques periodica).
+// VM0 e VM1 rodam 2-3 benchmarks concorrentes, sorteados sem parar. VM3 roda
+// um ataque aleatorio por vez, trocando a cada ATTACK_INTERVAL. VM2 e um Linux
+// enxuto que so sinaliza o boot (o modelo e colocado depois). VM3 sem IPC; o
+// monitor so acompanha VM1 (bench) e VM2 (boot).
+#define EXEC_VM_0 1
+#define EXEC_VM_1 1
+#define EXEC_VM_2 1
+#define EXEC_VM_3 1
+#define VM_2_IS_LINUX 1
+#define SCENARIO_LABEL_BENCH 0
+#define SCENARIO_LABEL_ATTACK 1
+#define BENCHMARK_RANDOM 1
+#define ACTIVE_IPC_CHANNELS 2 // VM0<->VM1 (bench) e VM0<->VM2 (boot)
 #else
-#error "SCENARIO deve ser 1, 2, 3, 4, 5, 6, 7, 8, 9 ou 10"
+#error "SCENARIO deve ser 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ou 11"
 #endif
 
 // Default BENCHMARK_FIXED for scenarios that don't define it

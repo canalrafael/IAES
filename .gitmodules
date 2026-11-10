@@ -1,4 +1,0 @@
-[submodule "apparate-ae/apparate"]
-	path = apparate-ae/apparate
-	url = https://github.com/gabrielmtg/apparate.git
-	branch = bao-numpy

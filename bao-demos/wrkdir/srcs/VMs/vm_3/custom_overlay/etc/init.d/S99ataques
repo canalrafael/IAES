@@ -17,6 +17,11 @@ LOGFILE="/tmp/ataques.log"
 ATTACK_DURATION=600   # 10 minutos (600s)
 SYNC_INTERVAL=15      # 15s
 
+# Scenario 11 (random_periodic): run one random attack at a time, continuously,
+# switching to another random attack every ATTACK_INTERVAL seconds. Never idle.
+# Override from the environment to change the cadence, e.g. ATTACK_INTERVAL=60.
+ATTACK_INTERVAL=${ATTACK_INTERVAL:-300}   # default 5 min
+
 # Unique labels per attack (to differentiate in CSV)
 # Benchmarks use 1-7, attacks start at 10
 L_BENCH=0
@@ -28,6 +33,10 @@ L_ZOMBIELOAD=13
 # Available benchmarks for non-attack phases
 BENCHMARKS="bandwidth dijkstra disparity fft qsort sha sorting"
 NUM_BENCHMARKS=7
+
+# Attack binaries for the random_periodic mode (scenario 11)
+ATTACKS="/root/spectre /root/armageddon /root/meltdown /root/zombieload"
+NUM_ATTACKS=4
 
 # PID file
 PIDFILE="/var/run/ataques.pid"
@@ -66,6 +75,23 @@ random_bench() {
     echo "sha"
 }
 
+# Pick a random attack binary (used by the random_periodic mode)
+random_attack() {
+    IDX=$(od -An -N1 -tu1 /dev/urandom | tr -d ' ')
+    IDX=$(( IDX % NUM_ATTACKS ))
+
+    COUNT=0
+    for A in $ATTACKS; do
+        if [ $COUNT -eq $IDX ]; then
+            echo "$A"
+            return
+        fi
+        COUNT=$(( COUNT + 1 ))
+    done
+
+    echo "/root/meltdown"
+}
+
 run_attacks() {
     MODE="no_idle"
     if [ -f $MODE_FILE ]; then
@@ -75,7 +101,23 @@ run_attacks() {
     echo "[VM3] Starting attack orchestrator (mode=$MODE, spectre=$L_SPECTRE armageddon=$L_ARMAGEDDON meltdown=$L_MELTDOWN zombieload=$L_ZOMBIELOAD)..." | tee $LOGFILE > /dev/console
 
     while true; do
-    if [ "$MODE" = "contention" ]; then
+    if [ "$MODE" = "random_periodic" ]; then
+            # Scenario 11: one random attack at a time, swapped every
+            # ATTACK_INTERVAL seconds. No IPC (VM3 has no channel here).
+            ATK=$(random_attack)
+            NAME=$(basename "$ATK")
+            echo "[VM3] >> random_periodic: $NAME for ${ATTACK_INTERVAL}s..." | tee -a $LOGFILE > /dev/console
+            if [ ! -x "$ATK" ]; then
+                echo "[VM3] WARNING: $ATK not found, skipping" | tee -a $LOGFILE > /dev/console
+                sleep 1
+            else
+                "$ATK" &
+                ATTACK_PID=$!
+                sleep $ATTACK_INTERVAL
+                kill -9 $ATTACK_PID 2>/dev/null
+                wait $ATTACK_PID 2>/dev/null
+            fi
+        elif [ "$MODE" = "contention" ]; then
             echo "[VM3] memory-bandwidth contention (starts after 60s)..." | tee -a $LOGFILE > /dev/console
             /root/memhog 60
         elif [ "$MODE" = "meltdown_only" ]; then

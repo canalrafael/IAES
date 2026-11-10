@@ -28,9 +28,9 @@ typedef struct {
     volatile uint32_t boot_done;      // VMx -> VM0: Linux boot finished
 } IPC_Channel;
 
-// Text relay slot (VM2 -> VM0): a throttled status line Apparate writes and
-// VM0 prints to its serial console. Lives above the IPC_Channel struct in the
-// same shared region. Offsets/layout must match ipc_report.py.
+// Text relay slot (VM2 -> VM0): an optional throttled status line the VM2 Linux
+// may write and VM0 prints to its serial console. Lives above the IPC_Channel
+// struct in the same shared region. Unused by the lean VM2 (kept for future use).
 #define IPC_TEXT_SEQ_OFF 0x100
 #define IPC_TEXT_LEN_OFF 0x104
 #define IPC_TEXT_BUF_OFF 0x108

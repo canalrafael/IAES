@@ -69,6 +69,39 @@ C_SRC+=$(wildcard $(SRC_GUEST_COMMON)/*.c)
 # OTHERS INCLUDES
 INC_DIRS+=$(INC_GUEST_COMMON)
 
+#benchmarks (concurrent background load, shared orchestrator with VM1)
+INC_BANDWIDTH=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/bandwidth/inc
+SRC_BANDWIDTH=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/bandwidth/src
+INC_DISPARITY=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/disparity/inc
+SRC_DISPARITY=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/disparity/src
+INC_MSER=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/mser/inc
+SRC_MSER=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/mser/src
+INC_FFT=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/fft/inc
+SRC_FFT=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/fft/src
+INC_SORTING=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/sorting/inc
+SRC_SORTING=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/sorting/src
+INC_QSORT=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/qsort/inc
+SRC_QSORT=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/qsort/src
+INC_DIJKSTRA=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/dijkstra/inc
+SRC_DIJKSTRA=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/dijkstra/src
+INC_SHA=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/sha/inc
+SRC_SHA=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/sha/src
+INC_BENCHMARKS=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/wrappers/inc
+SRC_BENCHMARKS=$(BAO_DEMOS_WRKDIR_SRC)/benchmarks/wrappers/src
+
+INC_DIRS += $(INC_BANDWIDTH) $(INC_DISPARITY) $(INC_MSER) $(INC_FFT) \
+            $(INC_SORTING) $(INC_QSORT) $(INC_DIJKSTRA) $(INC_SHA) \
+            $(INC_BENCHMARKS)
+C_SRC+=$(wildcard $(SRC_BANDWIDTH)/*.c)
+C_SRC+=$(wildcard $(SRC_DISPARITY)/*.c)
+C_SRC+=$(wildcard $(SRC_MSER)/*.c)
+C_SRC+=$(wildcard $(SRC_FFT)/*.c)
+C_SRC+=$(wildcard $(SRC_SORTING)/*.c)
+C_SRC+=$(wildcard $(SRC_QSORT)/*.c)
+C_SRC+=$(wildcard $(SRC_DIJKSTRA)/*.c)
+C_SRC+=$(wildcard $(SRC_SHA)/*.c)
+C_SRC+=$(wildcard $(SRC_BENCHMARKS)/*.c)
+
 #TASKS
 
 INC_TASKS=$(BAO_DEMOS_WRKDIR_SRC)/VMs/vm_0/src/tasks/inc

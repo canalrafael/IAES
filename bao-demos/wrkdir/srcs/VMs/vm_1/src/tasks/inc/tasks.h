@@ -1,15 +1,8 @@
 #ifndef TASKS_H
 #define TASKS_H
 
+// Entry point created by main(); starts the concurrent benchmark load
+// (see bench_concurrent.h / bench_concurrent.c).
 void task_orchestrator(void *arg);
-
-// Benchmark runner functions (one iteration each)
-void run_bandwidth(void);
-void run_disparity(void);
-void run_fft(void);
-void run_qsort_bench(void);
-void run_dijkstra(void);
-void run_sha(void);
-void run_sorting(void);
 
 #endif
