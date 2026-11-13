@@ -100,6 +100,13 @@ run_attacks() {
 
     echo "[VM3] Starting attack orchestrator (mode=$MODE, spectre=$L_SPECTRE armageddon=$L_ARMAGEDDON meltdown=$L_MELTDOWN zombieload=$L_ZOMBIELOAD)..." | tee $LOGFILE > /dev/console
 
+    if [ "$MODE" = "manual" ] || [ "$MODE" = "idle" ]; then
+        echo "[VM3] Manual/standby mode (Scenario 12): No attacks started automatically." | tee -a $LOGFILE > /dev/console
+        echo "[VM3] Shell is ready. Starting background attack_listener.sh for IPC signals..." | tee -a $LOGFILE > /dev/console
+        /bin/sh /root/attack_listener.sh > /tmp/attack_listener.log 2>&1 &
+        return 0
+    fi
+
     while true; do
     if [ "$MODE" = "random_periodic" ]; then
             # Scenario 11: one random attack at a time, swapped every

@@ -33,6 +33,9 @@ struct config config =
 #elif EXEC_VM_3 && !VM_2_IS_LINUX
             [0] = { .size = 0x00010000 },  // Channel 0: VM0 <-> VM3 (scenario 2)
 #endif
+#if SCENARIO == 12
+            [2] = { .size = 0x00010000 },  // Channel 2: VM2 <-> VM3 (Attack trigger)
+#endif
             // VM_2_IS_LINUX (scenarios 9/10/11): VM3 has no IPC channel.
 #if !EXEC_VM_1 && EXEC_VM_2 && !EXEC_VM_3
             [0] = { .size = 0x00010000 },  // Channel 0: VM0 <-> VM2 (scenario 9)
@@ -201,8 +204,17 @@ struct config config =
                                  .region_num = 1,
                                  .regions =
                                      (struct vm_mem_region[]){
-                                         {.base = 0x0, .size = 0x10000000}},  // 256 MB
+                                         {.base = 0x0, .size = 0x40000000}},  // 1 GB (Python + PyTorch)
 
+#if SCENARIO == 12
+                                 .ipc_num = 2,
+                                 .ipcs = (struct ipc[]){
+                                     {.base = 0x70000000, .size = 0x00010000, .shmem_id = 1,
+                                      .interrupt_num = 1, .interrupts = (irqid_t[]){52}},
+                                     {.base = 0x70020000, .size = 0x00010000, .shmem_id = 2,
+                                      .interrupt_num = 1, .interrupts = (irqid_t[]){53}}
+                                 },
+#else
                                  .ipc_num = 1,
                                  .ipcs = (struct ipc[]){{.base = 0x70000000,
                                                          .size = 0x00010000,
@@ -214,8 +226,9 @@ struct config config =
                                                          .interrupt_num = 1,
                                                          .interrupts =
                                                              (irqid_t[]){52}}},
+#endif
 
-                                 .dev_num = 4,
+                                 .dev_num = 5,
                                  .devs =
                                      (struct vm_dev_region[]){
                                          {/* GPIO para Pin Muxing. Aligned to 4KB! */
@@ -232,6 +245,12 @@ struct config config =
                                           .pa = 0xfe215000,
                                           .va = 0xfe215000,
                                           .size = 0x1000},
+                                         {/* BCM2711 GENET v5 Gigabit Ethernet */
+                                          .pa = 0x7d580000,
+                                          .va = 0x7d580000,
+                                          .size = 0x10000,
+                                          .interrupt_num = 2,
+                                          .interrupts = (irqid_t[]){157, 158}},
                                          {/* Arch timer interrupt */
                                           .interrupt_num = 1,
                                           .interrupts = (irqid_t[]){27}},
@@ -322,7 +341,14 @@ struct config config =
                                      (struct vm_mem_region[]){
                                          {.base = 0x0, .size = 0x10000000}},
 
-#if VM_2_IS_LINUX && EXEC_VM_3
+#if SCENARIO == 12
+                                 .ipc_num = 1,
+                                 .ipcs = (struct ipc[]){{.base = 0x70000000,
+                                                         .size = 0x00010000,
+                                                         .shmem_id = 2, // Channel 2: VM2 <-> VM3
+                                                         .interrupt_num = 1,
+                                                         .interrupts = (irqid_t[]){52}}},
+#elif VM_2_IS_LINUX && EXEC_VM_3
                                  // scenarios 10/11: VM2 is the Linux peer of the
                                  // monitor; VM3 (contention / attacks) has no IPC
                                  // channel and the monitor ignores it.

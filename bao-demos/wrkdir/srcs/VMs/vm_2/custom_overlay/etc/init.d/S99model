@@ -1,0 +1,30 @@
+#!/bin/sh
+# /etc/init.d/S99model
+#
+# Startup script for VM2: Signals boot-done to VM0 and leaves terminal ready.
+
+IPC_SIGNAL=/root/ipc_signal
+BOOT_DONE_OFFSET=12
+
+case "$1" in
+  start)
+        echo "[VM2] Boot sequence starting..." > /dev/console
+
+        if [ -c /dev/mem ] && [ -x "$IPC_SIGNAL" ]; then
+            $IPC_SIGNAL write $BOOT_DONE_OFFSET 1
+            echo "[VM2] Boot finished, signaled VM0 (boot_done=1)" > /dev/console
+        fi
+
+        echo "[VM2] Interactive mode ready." > /dev/console
+        echo "[VM2] Commands available in /root/ans:" > /dev/console
+        echo "[VM2]   1. Recalibrate profile: python3 /root/ans/profile_frontend.py" > /dev/console
+        echo "[VM2]   2. Run experiment with auto-sync: python3 /root/ans/experiments/run_experiment_client.py --scenario scenario_a --attack memory --ip_address <SERVER_IP>" > /dev/console
+        ;;
+  stop)
+        killall python3 2>/dev/null
+        ;;
+  *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+esac
+exit 0

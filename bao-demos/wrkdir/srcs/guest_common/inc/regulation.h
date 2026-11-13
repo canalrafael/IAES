@@ -106,7 +106,7 @@
 // Scenario 8: FIXED benchmarks (VM1=SHA, VM2=FFT) + persistent Meltdown (VM3)
 //             Core 1: SHA loop, Core 2: FFT loop, Core 3: Meltdown loop
 // ===============================================
-#define SCENARIO 11 // <-- CHANGE HERE TO SWITCH SCENARIO
+#define SCENARIO 12 // <-- CHANGE HERE TO SWITCH SCENARIO
 
 #if SCENARIO == 1
 // Solo benchmarks: VM0 (monitor) + VM1 (benchmarks)
@@ -227,7 +227,23 @@
 #define BENCHMARK_RANDOM 1
 #define ACTIVE_IPC_CHANNELS 2 // VM0<->VM1 (bench) e VM0<->VM2 (boot)
 #else
-#error "SCENARIO deve ser 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ou 11"
+#elif SCENARIO == 12
+// Scenario 12: ANS Interactive / Manual Evaluation
+// VM0 (monitor FreeRTOS) + VM1 (benchmarks FreeRTOS) +
+// VM2 (Linux, ANS split inference + controller + CSV logger and PC sync) +
+// VM3 (Linux, idle standby for manual contention injection via terminal).
+// No attacks run automatically at boot. All experiments triggered manually.
+#define EXEC_VM_0 1
+#define EXEC_VM_1 1
+#define EXEC_VM_2 1
+#define EXEC_VM_3 1
+#define VM_2_IS_LINUX 1
+#define SCENARIO_LABEL_BENCH 0
+#define SCENARIO_LABEL_ATTACK 0
+#define BENCHMARK_RANDOM 0
+#define ACTIVE_IPC_CHANNELS 2 // VM0<->VM1 (bench) and VM0<->VM2 (boot)
+#else
+#error "SCENARIO deve ser 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ou 12"
 #endif
 
 // Default BENCHMARK_FIXED for scenarios that don't define it
