@@ -7,7 +7,7 @@ ARCH:=armv8
 CPU:=cortex-a72
 
 GIC_VERSION:=GICV2
-RPI4_MEM_GB:=4
+RPI4_MEM_GB?=8
 
 drivers = 8250_uart
 

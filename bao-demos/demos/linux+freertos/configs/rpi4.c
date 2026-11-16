@@ -18,7 +18,11 @@ struct config config =
     {
         CONFIG_HEADER
 
+#if SCENARIO == 12
+            .shmemlist_size = 3,
+#else
             .shmemlist_size = ACTIVE_IPC_CHANNELS,
+#endif
         .shmemlist = (struct shmem[]){
 #if EXEC_VM_1
             [0] = { .size = 0x00010000 },  // Channel 0: VM0 <-> VM1
@@ -355,7 +359,6 @@ struct config config =
                                  .ipc_num = 0,
 #else
                                  .ipc_num = 1,
-#endif
                                  .ipcs = (struct ipc[]){{.base = 0x70000000,
                                                          .size = 0x00010000,
 #if EXEC_VM_2 && EXEC_VM_1
@@ -368,6 +371,7 @@ struct config config =
                                                          .interrupt_num = 1,
                                                          .interrupts =
                                                              (irqid_t[]){52}}},
+#endif
 
                                  .dev_num = 4,
                                  .devs =

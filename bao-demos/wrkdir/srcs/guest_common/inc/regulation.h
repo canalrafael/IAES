@@ -226,7 +226,6 @@
 #define SCENARIO_LABEL_ATTACK 1
 #define BENCHMARK_RANDOM 1
 #define ACTIVE_IPC_CHANNELS 2 // VM0<->VM1 (bench) e VM0<->VM2 (boot)
-#else
 #elif SCENARIO == 12
 // Scenario 12: ANS Interactive / Manual Evaluation
 // VM0 (monitor FreeRTOS) + VM1 (benchmarks FreeRTOS) +

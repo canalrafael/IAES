@@ -97,6 +97,7 @@ copy_to_sdcard() {
     local bl31_bin="${plat_dir}/bl31.bin"
     local uboot_bin="${plat_dir}/u-boot.bin"
     local bao_bin="${plat_dir}/linux+freertos/bao.bin"
+    local boot_scr="${plat_dir}/boot.scr"
     local real_user="${SUDO_USER:-$USER}"
     local sdcard="/media/${real_user}/BOOT/"
     # Some desktops (udisks2) mount removable media under /run/media instead
@@ -133,7 +134,7 @@ copy_to_sdcard() {
 
     info "Copying boot files to SD card at '${sdcard}'..."
     cp -rv "$firmware_boot"/. "$sdcard"
-    cp -v "$config_txt" "$bl31_bin" "$uboot_bin" "$bao_bin" "$sdcard"
+    cp -v "$config_txt" "$bl31_bin" "$uboot_bin" "$bao_bin" "$boot_scr" "$sdcard"
     sync
     ok "Boot files copied to '$sdcard'. Safe to eject!"
 }
