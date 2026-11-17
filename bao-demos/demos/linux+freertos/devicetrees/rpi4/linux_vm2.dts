@@ -87,8 +87,22 @@
         dma-ranges = < 0x00 0x00 0x00 0x00 0x04 0x00 >;
         ranges;
 
-        genet: ethernet@7d580000 {
-            local-mac-address = [dc a6 32 a3 9c 57];
+
+        genet: ethernet@fd580000 {
+
+            compatible = "brcm,bcm2711-genet-v5", "brcm,genet-v5";
+            reg = <0x00 0xfd580000 0x00 0x10000>;
+            #address-cells = <0x1>;
+            #size-cells = <0x1>;
+            /* GENET IRQs for Pi 4 */
+            interrupts = <0 189 4>,
+                        <0 190 4>;
+            status = "okay";
+
+            phy-handle = <&phy1>;
+            phy-mode = "rgmii-rxid";
+
+
             compatible = "brcm,bcm2711-genet-v5", "brcm,genet-v5";
             reg = < 0x00 0x7d580000 0x00 0x10000 >;
             #address-cells = <0x1>;
