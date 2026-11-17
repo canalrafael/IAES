@@ -244,7 +244,7 @@ struct config config =
                                           .va = 0xfe201000,
                                           .size = 0x2000,
                                           .interrupt_num = 1,
-                                          .interrupts = (irqid_t[]){128}},
+                                          .interrupts = (irqid_t[]){153}},
                                          {/* UART1 (mini-UART) para DEBUG. Aligned to 4KB! */
                                           .pa = 0xfe215000,
                                           .va = 0xfe215000,
@@ -391,7 +391,7 @@ struct config config =
                                           .interrupt_num = 0},
 #else
                                           .interrupt_num = 1,
-                                          .interrupts = (irqid_t[]){128}},
+                                          .interrupts = (irqid_t[]){153}},
 #endif
                                          {/* UART1 (FreeRTOS) para DEBUG do Linux. Aligned to 4KB! */
                                           .pa = 0xfe215000,

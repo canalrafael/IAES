@@ -104,8 +104,8 @@
                 compatible = "brcm,genet-mdio-v5";
                 reg = <0xe14 0x8>;
                 reg-names = "mdio";
-                #address-cells = <0x0>;
-                #size-cells = <0x1>;
+                #address-cells = <0x1>;
+                #size-cells = <0x0>;
 
                 phy1: ethernet-phy@1 {
                     reg = <0x01>;
@@ -129,7 +129,7 @@
     uart4:serial@fe201800 {
         compatible = "arm,sbsa-uart";
         reg = <0x0 0xfe201800 0x0 0x1000>;
-        interrupts = <0 96 4>;
+        interrupts = <0 121 4>;
         current-speed = <115200>;
         status = "okay";
     };
@@ -144,6 +144,17 @@
         status = "disabled";
     };
 
+    /* IPC Channel 2: VM2 <-> VM3 (attack trigger) */
+    bao-ipc@70020000 {
+        compatible = "bao,ipcshmem";
+        reg = <0x0 0x70020000 0x0 0x00010000>;
+        read-channel = <0x0 0x200000>;
+        write-channel = <0x200000 0x200000>;
+        interrupts = <0 53 1>;
+        id = <2>;
+        status = "disabled";
+    };
+
     aliases {
         ethernet0 = &genet;
         serial0 = &uart1;
@@ -152,7 +163,7 @@
 
     chosen {
         stdout-path = "serial1:115200n8";
-        bootargs = "console=ttyAMA1,115200 earlycon=pl011,mmio32,0xfe201800 clk_ignore_unused fw_devlink=permissive ip=dhcp vm_role=model";
+        bootargs = "console=ttyAMA1,115200 earlycon=pl011,mmio32,0xfe201800 clk_ignore_unused fw_devlink=permissive vm_role=model";
         linux,initrd-start = <0x0 0x04000000>;
         linux,initrd-end   = <0x0 0x06000000>; /* SED_PLACEHOLDER */
     };

@@ -87,10 +87,10 @@
         dma-ranges = < 0x00 0x00 0x00 0x00 0x04 0x00 >;
         ranges;
 
-        genet: ethernet@7d580000 {
+        genet: ethernet@fd580000 {
             local-mac-address = [dc a6 32 a3 9c 57];
             compatible = "brcm,bcm2711-genet-v5", "brcm,genet-v5";
-            reg = < 0x00 0x7d580000 0x00 0x10000 >;
+            reg = < 0x00 0xfd580000 0x00 0x10000 >;
             #address-cells = <0x1>;
             #size-cells = <0x1>;
             interrupts = <0 157 4>,
@@ -129,7 +129,7 @@
     uart4:serial@fe201800 {
         compatible = "arm,sbsa-uart";
         reg = <0x0 0xfe201800 0x0 0x1000>;
-        interrupts = <0 96 4>;
+        interrupts = <0 121 4>;
         current-speed = <115200>;
         status = "okay";
     };
@@ -152,7 +152,8 @@
 
     chosen {
         stdout-path = "serial1:115200n8";
-        bootargs = "console=ttyAMA1,115200 earlycon=pl011,mmio32,0xfe201800 clk_ignore_unused fw_devlink=permissive ip=192.168.2.4 carrier_timeout=0 vm_role=ataque";
+        /* VM3 (attack): console redirected to tty1 (silent/headless) so VM2 owns ttyAMA1 exclusively */
+        bootargs = "console=tty1 clk_ignore_unused fw_devlink=permissive ip=dhcp vm_role=ataque";
         linux,initrd-start = <0x0 0x04000000>;
         linux,initrd-end   = <0x0 0x06000000>; /* SED_PLACEHOLDER */
     };
