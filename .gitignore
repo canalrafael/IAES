@@ -59,6 +59,10 @@ data/csv_final/
 
 apresentacao/
 
+# ANS dataset (downloaded on demand by scripts/unpack_dataset.sh)
+bao-demos/wrkdir/srcs/VMs/vm_2/custom_overlay/root/ans/models/dataset/
+scripts/dataset_assets/*.tar.gz
+
 # Misc
 *.swp
 *.swo
